@@ -19,7 +19,7 @@ Cookies：登录后缓存Cookies
 
 refresh_token: 登录后自动设置，暂无相关代码
 
-bupid：希望自动检查的b站up主id列表
+bupid：希望自动检查的b站up主id列表，多个用英文 , 隔开
 
 datadir：自定义的缓存数据目录，默认为当前目录，为每个upid的名字
 
