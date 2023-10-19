@@ -1,0 +1,2 @@
+# AutoDownBUPDynamic
+自动检查B站up的更新并缓存图片和视频
