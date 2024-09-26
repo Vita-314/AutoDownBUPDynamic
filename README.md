@@ -2,7 +2,7 @@
 自动检查B站up的更新并缓存图片和视频
 
 基于bilibili-API-collect 项目整理的API开发 
-[https://github.com/Vita-314/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)
+[bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)
 
 自动下载视频功能基于知乎用户 程序猿城南 帖子代码
 如何使用Python爬取bilibili视频（详细教程） - 知乎 (zhihu.com)
