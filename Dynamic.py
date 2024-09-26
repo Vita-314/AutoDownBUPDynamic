@@ -10,13 +10,12 @@ import sys
 from datetime import datetime
 from lxml import etree
 
-
-
 requests.packages.urllib3.disable_warnings()
 
 #主文件夹
 BASEDIR = os.path.dirname(os.path.realpath( sys.argv[0]))
-
+type = sys.getfilesystemencoding()
+print(type)
 class Dynamic:
     CONFIG = {}
     # 数据格式
@@ -54,13 +53,16 @@ class Dynamic:
             self.dir_path = self.CONFIG['datadir']
             # 如果目录不存在，则创建目录
             if not os.path.exists(self.dir_path): os.makedirs(self.dir_path)
+
+        self.log(self.CONFIG['headers'])
+        self.sess.headers = self.CONFIG['headers']
         # 判断是否需要登录
         if (self.CONFIG['Cookies'] == '' or self.CONFIG['Cookies'] == {}) :
+            self.log("登录-----")
             self.login()
         else :
             self.log("从config设置Cookies")
             self.sess.cookies = requests.utils.cookiejar_from_dict(self.CONFIG['Cookies'])
-            self.sess.headers = self.CONFIG['headers']
         d = self.sess.get('https://api.bilibili.com/x/web-interface/nav').json()
         if not d['data']['isLogin'] : self.login()
         self.log(self.CONFIG)
@@ -72,9 +74,26 @@ class Dynamic:
     def login(self):
         cook = {}
         a = self.sess.get('https://www.bilibili.com')
+        
         for co in self.sess.cookies:
             cook[co.name] = co.value
-        rep = self.sess.get('https://passport.bilibili.com/x/passport-login/web/qrcode/generate').json()
+            self.log(co.value)
+        rep = self.sess.get('https://passport.bilibili.com/x/passport-login/web/qrcode/generate')
+        print("Request Headers:")
+        print(self.sess.headers)
+
+        # 打印响应的 headers
+        print("\nResponse Headers:")
+        print(rep.headers)
+
+        # 打印 cookies
+        print("\nCookies:")
+        print(self.sess.cookies)
+        print("Content Type:", rep.headers.get('Content-Type'))
+
+        self.log(rep.text)
+        rep=rep.json()
+
         qrcode = rep['data']['url']
         token = rep['data']['qrcode_key']
         pyqrcode.create(qrcode).png((BASEDIR + '/qrcode.png'),scale=12)
@@ -84,7 +103,6 @@ class Dynamic:
             j=rst.json()
             if j['data']['code'] == 0:
                 self.log('登录成功')
-                
                 self.CONFIG['refresh_token'] = j['data']['refresh_token']
                 for co in rst.cookies:
                     cook[co.name] = co.value
@@ -107,8 +125,9 @@ class Dynamic:
         while True :
             for upid in self.CONFIG['bupid']:
                 self.getdata(upid=upid)
-                
+            
             self.iscomment = True
+            self.log('up id列表已更新 + 开始自动评论')
             self.CONFIG['down-atfirst'] = self.CONFIG['autodownload']
             time.sleep(self.CONFIG['interval-sec'])
 
@@ -173,14 +192,29 @@ class Dynamic:
                 os.makedirs(folder_path)
             # 如果文件不存在，创建文件
             try:
+                
+                # if not os.path.isfile(csv_path):
+                #     with open(file=csv_path ,mode='a',encoding='gbk', newline='') as c:
+                #         w = csv.DictWriter(c,fieldnames=self.datajson.keys(),quoting=csv.QUOTE_ALL)
+                #         w.writeheader()
+                #         self.log(dali)
+                #         w.writerow(dali)
+                # else:
+                #     with open(file=csv_path ,mode='a',encoding='gbk', newline='') as c:
+                #         csv.DictWriter(c,fieldnames=self.datajson.keys(),quoting=csv.QUOTE_ALL).writerow(dali)
+
+
                 if not os.path.isfile(csv_path):
-                    with open(file=csv_path ,mode='a',encoding='gbk', newline='') as c:
+                    with open(file=csv_path ,mode='a',encoding='gbk',errors='ignore', newline='') as c:
                         w = csv.DictWriter(c,fieldnames=self.datajson.keys(),quoting=csv.QUOTE_ALL)
                         w.writeheader()
+                        self.log(dali)
                         w.writerow(dali)
                 else:
-                    with open(file=csv_path ,mode='a',encoding='gbk', newline='') as c:
+                    with open(file=csv_path ,mode='a',encoding='gbk',errors='ignore', newline='') as c:
                         csv.DictWriter(c,fieldnames=self.datajson.keys(),quoting=csv.QUOTE_ALL).writerow(dali)
+                    
+            
             except PermissionError:
                 self.log('权限不足写入失败，或许其他程序占用')
             
@@ -194,7 +228,6 @@ class Dynamic:
             self.downvideo(upid,dali['videopath'])    
         # 更新已缓存id列表
         self.updylist(upid)
-        self.log('动态id列表已更新 + 开始自动评论')
 
 
 
@@ -230,13 +263,16 @@ class Dynamic:
         self.downfile(homeurl=url,url=audioURL,filepath=audioPath,session=self.sess)
 
         videoout = os.path.join(self.dir_path, '{0}/{1}_out.mp4'.format(upid,bvid))
-        self.combineVideoAudio(videoPath,audioPath,videoout)
+        self.combineVideoAudio(videoPath,audioPath,videoout,bvid)
 
         
-    def combineVideoAudio(self,videopath,audiopath,outpath):
+    def combineVideoAudio(self,videopath,audiopath,outpath,bvid):
         dir = BASEDIR[0].upper() + BASEDIR[1:]
         dir = dir.replace("\\","/")
-        subprocess.call((dir +"/ffmpeg/bin/ffmpeg.exe -y -i " + videopath + " -i " + audiopath + " -c copy "+ outpath).encode("utf-8").decode("utf-8"),shell=True)
+        #subprocess.call((dir +"/ffmpeg/bin/ffmpeg.exe -y -i " + videopath + " -i " + audiopath + " -c copy "+ outpath).encode("utf-8").decode("utf-8"),shell=True)
+        subprocess.run(dir +"/ffmpeg/bin/ffmpeg.exe -y -i " + videopath + " -i " + audiopath + " -c copy "+ outpath,shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        self.log("下载视频[ {0} ]完成。".format(bvid))
         os.remove(videopath)
         os.remove(audiopath)
 
@@ -306,7 +342,7 @@ class Dynamic:
             da['text'] = item['modules']['module_dynamic']['desc']['text']
             da['imagepath'] = []
             if (item['modules']['module_dynamic']['major'] != None):
-                for img in item['modules']['module_dynamic']['major']['draw']['items']:
+                for img in   在 item['modules']['module_dynamic']['major']['draw']['items']:
                     da['imagepath'].append(img['src'])
             return da
         
@@ -325,11 +361,14 @@ class Dynamic:
             return da   
     
     def log(self,text):
-        print('[{0}]: {1}\n'.format(datetime.now().strftime('%m/%d %H:%M'),text))
+        try:
+            print('[{0}]: {1}\n'.format(datetime.now().strftime('%m/%d %H:%M'),text).encode('utf-8').decode(type))
+        except UnicodeEncodeError:
+            print("编码错误")
+            pass
 
-        if(not self.CONFIG['is_log']):
+        if(not self.CONFIG   配置['is_log']):
             return 
-        
         log_path = os.path.join(BASEDIR, "log.txt")
         with open(log_path,'a',encoding='utf-8') as f:
             f.write('[{0}]: {1}\n'.format(datetime.now().strftime('%m/%d %H:%M'),text))
