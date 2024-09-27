@@ -126,9 +126,10 @@ class Dynamic:
             for upid in self.CONFIG['bupid']:
                 self.getdata(upid=upid)
             
-            self.iscomment = True
-            self.log('up id列表已更新 + 开始自动评论')
-            self.CONFIG['down-atfirst'] = self.CONFIG['autodownload']
+            if not self.iscomment : 
+                self.iscomment = True
+                self.log('up id列表已更新 + 开始自动评论')
+                self.CONFIG['down-atfirst'] = self.CONFIG['autodownload']
             time.sleep(self.CONFIG['interval-sec'])
 
     #从csv中获取已缓存的动态id列表，判断重复或更新写入csv
@@ -173,6 +174,7 @@ class Dynamic:
             self.log('====')
             return
         
+        self.log(self.dyidlist[upid])
         for item in data['data']['items'][::-1] :
 
             dali = self.toDynamicData(item)
@@ -248,15 +250,19 @@ class Dynamic:
 
     def downvideo(self,upid,url):
         if url == '' : return
-
         bvid = str(url).split('/')[-2]
         res = self.sess.get(url=url)
         _element = etree.HTML(res.content)
         videoPlayInfo = str(_element.xpath('//head/script[4]/text()')[0].encode('utf-8').decode('utf-8'))[20:]
         videoJson = json.loads(videoPlayInfo)
-        videoURL = videoJson['data']['dash']['video'][0]['baseUrl']
-        audioURL = videoJson['data']['dash']['audio'][0]['baseUrl']
 
+        try : 
+            videoURL = videoJson['data']['dash']['video'][0]['baseUrl']
+            audioURL = videoJson['data']['dash']['audio'][0]['baseUrl']
+        except KeyError:
+            self.log(url+"数据获取失败，请检查")
+            return
+        
         videoPath = os.path.join(self.dir_path, '{0}/{1}.mp4'.format(upid,bvid))
         audioPath = os.path.join(self.dir_path, '{0}/{1}.mp3'.format(upid,bvid))
         self.downfile(homeurl=url,url=videoURL,filepath=videoPath,session=self.sess)
@@ -270,7 +276,7 @@ class Dynamic:
         dir = BASEDIR[0].upper() + BASEDIR[1:]
         dir = dir.replace("\\","/")
         #subprocess.call((dir +"/ffmpeg/bin/ffmpeg.exe -y -i " + videopath + " -i " + audiopath + " -c copy "+ outpath).encode("utf-8").decode("utf-8"),shell=True)
-        subprocess.run(dir +"/ffmpeg/bin/ffmpeg.exe -y -i " + videopath + " -i " + audiopath + " -c copy "+ outpath,shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run((dir +"/ffmpeg/bin/ffmpeg.exe -y -i " + videopath + " -i " + audiopath + " -c copy "+ outpath),shell=True , stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         self.log("下载视频[ {0} ]完成。".format(bvid))
         os.remove(videopath)
@@ -342,7 +348,7 @@ class Dynamic:
             da['text'] = item['modules']['module_dynamic']['desc']['text']
             da['imagepath'] = []
             if (item['modules']['module_dynamic']['major'] != None):
-                for img in   在 item['modules']['module_dynamic']['major']['draw']['items']:
+                for img in item['modules']['module_dynamic']['major']['draw']['items']:
                     da['imagepath'].append(img['src'])
             return da
         
@@ -367,7 +373,7 @@ class Dynamic:
             print("编码错误")
             pass
 
-        if(not self.CONFIG   配置['is_log']):
+        if(not self.CONFIG['is_log']):
             return 
         log_path = os.path.join(BASEDIR, "log.txt")
         with open(log_path,'a',encoding='utf-8') as f:
