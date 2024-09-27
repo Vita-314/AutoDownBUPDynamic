@@ -27,7 +27,7 @@ interval-sec:检查周期秒数
 
 autodownload：为true则在检查到up更新后下载图片视频文件
 
-down-atfirst: 为true则在首次运行时下载up动态的文件【暂无效果，因为默认第一次运行只缓存动态列表不下载文件】
+down-atfirst: 为true则在首次运行时下载up动态的文件【*~~暂无效果，因为默认第一次运行只缓存动态列表不下载文件~~*】
 
 autocomment： 自动评论的文字，填入希望检测到up更新后自动评论的内容，为空则不评论
 
